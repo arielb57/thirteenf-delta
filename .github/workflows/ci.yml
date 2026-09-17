@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned: Biome and tsc versions are pinned exactly in package-lock.json,
+          # and the Node version is pinned here so lint results do not drift.
+          node-version: "22.20.0"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20.12 is the declared minimum in package.json engines.
+        node: ["20.12.0", "22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: CLI smoke run
+        run: |
+          node dist/src/cli.js generate ./filings --seed 15
+          node dist/src/cli.js diff ./filings --manager 1237840
+
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run bench
