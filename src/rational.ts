@@ -89,3 +89,59 @@ export function inferSplit(priceRatio: number, tolerance = SPLIT_PRICE_TOLERANCE
   if (k.n === k.d) return { n: 1, d: 1 };
   return SPLIT_RATIOS.some((s) => s.n === k.n && s.d === k.d) ? k : { n: 1, d: 1 };
 }
+
+/** How far an inferred split can be pushed before it stops being the answer. */
+export interface SplitConfidence {
+  /** What the default tolerance infers. `1/1` means no split. */
+  ratio: Ratio;
+  /**
+   * The largest price-move tolerance at which `ratio` is still what comes out.
+   * Read it as "this reading survives a real quarterly move of up to X".
+   */
+  holdsUpTo: number;
+  /** What the inference becomes just past `holdsUpTo`. */
+  becomes: Ratio;
+}
+
+/** Widest tolerance worth probing: past this every interval contains 1. */
+const MAX_PROBE = 0.95;
+
+/**
+ * How much room the split inference has.
+ *
+ * The inference assumes the market moved less than `SPLIT_PRICE_TOLERANCE` on
+ * top of any split, and real stocks routinely move more than that in a quarter.
+ * Widening the band is not the fix: a wider interval swallows simpler
+ * fractions, and the answer silently becomes something else. What a reader
+ * needs is not a wider guess but the size of the move that would overturn this
+ * one.
+ *
+ * So the tolerance is pushed outwards until the inference changes, by
+ * bisection on a quantity that is monotone in it — the interval only grows, so
+ * once a simpler rational is inside it never leaves. A reading that survives to
+ * 0.30 is safe against any plausible quarter; one that breaks at 0.07 is a
+ * coin-toss dressed as a fact, and saying so is the honest output.
+ */
+export function splitConfidence(
+  priceRatio: number,
+  tolerance = SPLIT_PRICE_TOLERANCE,
+): SplitConfidence {
+  const ratio = inferSplit(priceRatio, tolerance);
+  const same = (a: Ratio, b: Ratio) => a.n === b.n && a.d === b.d;
+
+  if (!(priceRatio > 0) || !Number.isFinite(priceRatio)) {
+    return { ratio, holdsUpTo: MAX_PROBE, becomes: ratio };
+  }
+  if (same(inferSplit(priceRatio, MAX_PROBE), ratio)) {
+    return { ratio, holdsUpTo: MAX_PROBE, becomes: ratio };
+  }
+
+  let lo = tolerance;
+  let hi = MAX_PROBE;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (same(inferSplit(priceRatio, mid), ratio)) lo = mid;
+    else hi = mid;
+  }
+  return { ratio, holdsUpTo: lo, becomes: inferSplit(priceRatio, hi) };
+}

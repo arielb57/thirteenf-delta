@@ -124,6 +124,20 @@ export interface Delta {
   shares: number;
   /** Shares per pre-split share; 1/1 when no split was inferred. */
   splitRatio: Ratio;
+  /**
+   * How large a genuine quarterly price move would have to be to overturn
+   * `splitRatio`, as a fraction. Undefined when there was no price evidence.
+   *
+   * A split reading is an inference from one number, and the assumption behind
+   * it — that the market moved less than the tolerance on top of the split — is
+   * the weakest thing in this tool. This says how much room the reading has: a
+   * 2:1 that survives to 0.50 is safe against any plausible quarter, a 10:1
+   * that breaks at 0.10 is not, and a no-split reading with a small margin is
+   * one bad quarter away from being called a split.
+   */
+  splitHoldsUpTo?: number;
+  /** What `splitRatio` becomes past `splitHoldsUpTo`. */
+  splitBecomes?: Ratio;
   /** prevShares expressed in post-split shares. */
   adjustedPrevShares: number;
   /** shares - adjustedPrevShares: the real trade. */

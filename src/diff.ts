@@ -1,4 +1,4 @@
-import { inferSplit, ratioToString } from "./rational.js";
+import { inferSplit, ratioToString, splitConfidence } from "./rational.js";
 import type {
   Delta,
   DeltaLabel,
@@ -50,13 +50,25 @@ export function diffPair(
     const notes: string[] = [];
 
     let split: Ratio = { n: 1, d: 1 };
+    let holdsUpTo: number | undefined;
+    let becomes: Ratio | undefined;
     if (p && c && any.sshPrnamtType === "SH" && prevShares > 0 && shares > 0) {
       if (p.valueUsd > 0 && c.valueUsd > 0) {
         const priceRatio = c.valueUsd / shares / (p.valueUsd / prevShares);
         split = inferSplit(priceRatio, options.splitTolerance);
+        const confidence = splitConfidence(priceRatio, options.splitTolerance);
+        holdsUpTo = confidence.holdsUpTo;
+        becomes = confidence.becomes;
         if (split.n !== split.d) {
           notes.push(
             `implied price moved by ${priceRatio.toPrecision(4)}x; simplest split ratio in tolerance is ${ratioToString(split)}`,
+          );
+        }
+        // Worth saying out loud only when a plausible quarter could overturn it.
+        if (confidence.holdsUpTo < 0.35 && confidence.becomes !== confidence.ratio) {
+          notes.push(
+            `a real price move of ${(100 * confidence.holdsUpTo).toFixed(0)}% on top would read as ` +
+              `${ratioToString(confidence.becomes)} instead`,
           );
         }
       }
@@ -112,6 +124,8 @@ export function diffPair(
       prevShares,
       shares,
       splitRatio: split,
+      splitHoldsUpTo: holdsUpTo,
+      splitBecomes: becomes,
       adjustedPrevShares,
       shareDelta,
       prevValueUsd: p?.valueUsd ?? 0,

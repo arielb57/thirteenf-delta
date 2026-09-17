@@ -51,6 +51,21 @@ Rows are summed per **(CUSIP, putCall, sshPrnamtType)** across `otherManager` an
 
 The previous share count is then restated in post-split shares, so the trade is `shares − prevShares × k`. Share counts never enter the inference, which is why a 3:2 split with a 5% purchase on top comes out as `ADD +5%` and not as `SPLIT_ONLY`. A test checks every recognised ratio across the whole ±3% move range. With a 5% band, the interval around 10 excludes both 9 and 11, and the interval around 3/2 contains no simpler fraction.
 
+**4b. How far a split reading can be pushed** (`splitConfidence`). Inferring a split from one price ratio rests on the market having moved less than the tolerance on top of it, which is the weakest assumption in the tool. Widening the band is not a fix: a wider interval swallows simpler fractions and the answer quietly becomes something else. What a reader needs is not a wider guess but the size of the move that would overturn this one, so the tolerance is pushed outwards by bisection until the inference changes, and the result travels with the delta.
+
+The margins are not alike, which is the point:
+
+| observed price ratio | reading | survives a real move of | past that, reads as |
+|---:|---|---:|---|
+| ×0.500 | 2:1 split | ±50% | no split |
+| ×0.667 | 3:2 split | ±33% | no split |
+| ×0.100 | 10:1 split | **±10%** | no split |
+| ×0.980 | no split | ±95% | — |
+| ×0.700 | **3:2 split** | ±30% | no split |
+| ×0.340 | 3:1 split | ±32% | 2:1 split |
+
+A 2:1 reading is safe against any quarter a stock is likely to have. A 10:1 breaks at ±10%, because 9 enters the interval at that width and 9 is not a recognised split — so the same evidence that looks decisive for one ratio is a coin toss for another. The fifth row is the false positive the limitations warn about, caught in the act: a 30% fall with no corporate action reads as a 3:2 split, and the margin says so. A delta whose reading breaks under 35% says it in its notes.
+
 **5. Classifier** (`src/diff.ts`). Every position held in either of two consecutive quarters gets one label. The first matching rule wins:
 
 | Label | When |
@@ -267,10 +282,7 @@ The misreport check could have compared each filing only with the previous quart
 
 ## Limitations
 
-- **Split inference assumes quarterly price moves under 5%** apart from the split itself. The generator uses ±3%. Real stocks often move more:
-  - A split with no trade still has share and value evidence, but the price interval may miss the split ratio or contain a simpler one, and the tool then reports a large ADD or TRIM.
-  - A real price move of about a third or more with no split (for example a fall to 2/3 or a doubling) can land on a recognised ratio and be reported as a split.
-  - Fixing this properly needs outside data: a corporate-actions feed, or the same CUSIP across many filers.
+- **Split inference assumes quarterly price moves under 5%** apart from the split itself, and real stocks often move more. That assumption cannot be removed without outside data — a corporate-actions feed, or the same CUSIP across many filers — so instead every delta carries the size of the move that would overturn its reading (`splitHoldsUpTo`, see *How far a split reading can be pushed*). The two failure modes are still there; they are now labelled per position rather than declared once in this list.
 - **Only these split ratios are recognised:** 2, 3, 4, 5, 10, 3/2 and their reciprocals. 5/4 is excluded because 4/3 is simpler and falls inside its tolerance interval.
 - **Unit-misreport detection needs overlap.** A filing that shares no common-stock or option CUSIP with any filing from an adjacent quarter keeps the unit its date implies. A misreport in such a filing goes undetected. Positions held only as principal amounts (`PRN`) are never used as price evidence.
 - **The input format is one XML file per filing.** On EDGAR, the header and cover page (`primary_doc.xml`) and the information table are separate documents, and the acceptance time is in the submission index. You have to combine them into one file before using this tool. It does not download from EDGAR, and it runs fully offline.
