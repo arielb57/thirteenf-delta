@@ -1,0 +1,32 @@
+{
+  "name": "thirteenf-delta",
+  "version": "0.1.0",
+  "description": "Real position changes from SEC 13F filings, not artefacts of amendments, units or splits.",
+  "license": "MIT",
+  "author": "Ariel Belhamou",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "thirteenf-delta": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src"
+  ],
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "lint": "biome check . && tsc -p tsconfig.json --noEmit",
+    "bench": "npm run build && node dist/bench/bench.js",
+    "compare": "npm run build && node dist/bench/compare.js"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "22.20.3",
+    "fast-check": "4.10.1",
+    "typescript": "5.9.3"
+  }
+}
