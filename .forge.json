@@ -1,0 +1,21 @@
+{
+  "name": "thirteenf-delta",
+  "tagline": "Real position changes from SEC 13F filings, not artefacts of amendments, units or splits",
+  "language": "typescript",
+  "topics": ["sec", "13f", "edgar", "finance", "typescript", "data-quality"],
+  "trendOrigin": "Trend 3 (hedge-fund-tracker). 13F trackers are popular, but they diff raw filings naively. The useful project is the part those trackers get wrong: working out what a manager actually changed from one quarter to the next.",
+  "gate": {
+    "stats": {
+      "sourceFiles": 22,
+      "testFiles": 6,
+      "testCases": 29,
+      "assertions": 119,
+      "readmeWords": 3156,
+      "testsPassed": true,
+      "lintPassed": true,
+      "entryPointRuns": true
+    },
+    "warnings": []
+  },
+  "generatedAt": "2026-09-17T01:12:01.202Z"
+}
